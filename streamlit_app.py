@@ -3,21 +3,31 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# -----------------------------
+# =============================
 # Load models / data
-# -----------------------------
+# =============================
 flight_model = joblib.load("flight_price_prediction_model.pkl")
 gender_model = joblib.load("gender_classification_model.pkl")
 hotel_data = joblib.load("hotel_recommender_data.pkl")
 
-# -----------------------------
+hotel_stats_df = hotel_data["hotel_stats"]
+
+# =============================
 # App config
-# -----------------------------
-st.set_page_config(page_title="Voyage Analytics", layout="wide")
+# =============================
+st.set_page_config(
+    page_title="Voyage Analytics Platform",
+    layout="wide"
+)
 
 st.title("✈️ Voyage Analytics Platform")
-st.write("Flight Price Prediction • Gender Classification • Hotel Recommendation")
+st.caption(
+    "Flight Price Prediction • Gender Classification • Hotel Recommendation"
+)
 
+# =============================
+# Tabs
+# =============================
 tab1, tab2, tab3 = st.tabs([
     "✈️ Flight Price Prediction",
     "🧑 Gender Classification",
@@ -33,26 +43,50 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        time = st.slider("Flight Time (hours)", 0.5, 5.0, 1.5, step=0.1)
-        distance = st.slider("Distance (km)", 100.0, 3000.0, 700.0, step=10.0)
+        time = st.slider(
+            "Flight Time (hours)",
+            min_value=0.5,
+            max_value=6.0,
+            value=1.5,
+            step=0.1
+        )
+
+        distance = st.slider(
+            "Distance (km)",
+            min_value=100.0,
+            max_value=3000.0,
+            value=700.0,
+            step=50.0
+        )
 
     with col2:
-        flight_type = st.selectbox("Flight Type", ["firstClass", "premium"])
-        agency = st.selectbox("Agency", ["FlyingDrops", "Rainbow"])
+        flight_type = st.selectbox(
+            "Flight Type",
+            ["firstClass", "premium"]
+        )
 
-    # One-hot encoding (EXACTLY like training)
+        agency = st.selectbox(
+            "Agency",
+            ["FlyingDrops", "Rainbow"]
+        )
+
+    # One-hot encoding (same as training)
     flightType_firstClass = 1 if flight_type == "firstClass" else 0
     flightType_premium = 1 if flight_type == "premium" else 0
     agency_FlyingDrops = 1 if agency == "FlyingDrops" else 0
     agency_Rainbow = 1 if agency == "Rainbow" else 0
 
     if st.button("Predict Flight Price"):
-        X = np.array([[time, distance,
-                       flightType_firstClass, flightType_premium,
-                       agency_FlyingDrops, agency_Rainbow]])
+        X = np.array([[
+            time,
+            distance,
+            flightType_firstClass,
+            flightType_premium,
+            agency_FlyingDrops,
+            agency_Rainbow
+        ]])
 
         price = flight_model.predict(X)[0]
-
         st.success(f"💰 Estimated Flight Price: ₹ {price:.2f}")
 
 # =====================================================
@@ -64,53 +98,70 @@ with tab2:
     col1, col2 = st.columns(2)
 
     with col1:
-        user_code = st.number_input("User Code", min_value=0, value=0)
-        age = st.slider("Age", 18, 80, 30)
-
-    with col2:
-        company_encoded = st.number_input(
-            "Company Encoded Value",
-            help="Use the same encoding used during training",
+        user_code = st.number_input(
+            "User Code",
+            min_value=0,
+            max_value=2000,
             value=0
         )
-        first_name_encoded = st.number_input(
-            "First Name Encoded Value",
-            help="Encoded first name (LabelEncoder)",
-            value=0
+
+        age = st.slider(
+            "Age",
+            min_value=18,
+            max_value=80,
+            value=30
+        )
+
+    with col2:
+        company_encoded = st.slider(
+            "Company Code (encoded)",
+            min_value=0,
+            max_value=50,
+            value=0,
+            help="Encoded company ID used during training"
+        )
+
+        first_name_encoded = st.slider(
+            "First Name Code (encoded)",
+            min_value=0,
+            max_value=2000,
+            value=0,
+            help="Encoded first name ID used during training"
         )
 
     if st.button("Predict Gender"):
-        X = np.array([[user_code, age, company_encoded, first_name_encoded]])
-        pred = gender_model.predict(X)[0]
+        X = np.array([[
+            user_code,
+            age,
+            company_encoded,
+            first_name_encoded
+        ]])
 
+        pred = gender_model.predict(X)[0]
         gender_map = {0: "Female", 1: "Male", 2: "Other"}
-        st.success(f"🧾 Predicted Gender: **{gender_map.get(pred, 'Unknown')}**")
+
+        st.success(f"🧾 Predicted Gender: **{gender_map[pred]}**")
 
 # =====================================================
 # TAB 3: HOTEL RECOMMENDATION
 # =====================================================
-# ====================================================
-# 🏨 HOTEL RECOMMENDATION
-# ====================================================
-# ====================================================
-# 🏨 HOTEL RECOMMENDATION
-# ====================================================
-with tabs[2]:
+with tab3:
     st.header("🏨 Hotel Recommendation")
-    st.caption("Personalized hotel suggestions based on historical bookings")
-
-    # Extract DataFrame correctly
-    hotel_stats_df = hotel_data["hotel_stats"]
+    st.caption("Personalized hotel suggestions based on user booking history")
 
     user_code = st.number_input(
         "User Code",
         min_value=0,
         max_value=int(hotel_stats_df["userCode"].max()),
-        step=1,
-        help="User ID from dataset"
+        step=1
     )
 
-    top_k = st.slider("Number of recommendations", 1, 10, 5)
+    top_k = st.slider(
+        "Number of Recommendations",
+        min_value=1,
+        max_value=10,
+        value=5
+    )
 
     if st.button("Recommend Hotels"):
         user_hotels = hotel_stats_df[
@@ -118,7 +169,23 @@ with tabs[2]:
         ]
 
         if user_hotels.empty:
-            st.warning("No booking history found for this user.")
+            st.warning(
+                "No history found. Showing popular hotels instead."
+            )
+
+            popular = (
+                hotel_stats_df
+                .groupby(["place", "name"], as_index=False)
+                .agg(
+                    bookings=("bookings", "sum"),
+                    avg_total_cost=("avg_total_cost", "mean")
+                )
+                .sort_values("bookings", ascending=False)
+                .head(top_k)
+            )
+
+            st.dataframe(popular, use_container_width=True)
+
         else:
             recommendations = (
                 user_hotels
@@ -136,4 +203,5 @@ with tabs[2]:
                 ],
                 use_container_width=True
             )
+
 
