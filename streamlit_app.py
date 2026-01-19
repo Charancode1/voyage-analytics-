@@ -92,33 +92,48 @@ with tab2:
 # ====================================================
 # 🏨 HOTEL RECOMMENDATION
 # ====================================================
+# ====================================================
+# 🏨 HOTEL RECOMMENDATION
+# ====================================================
 with tabs[2]:
     st.header("🏨 Hotel Recommendation")
+    st.caption("Personalized hotel suggestions based on historical bookings")
 
-    st.caption("Based on historical user booking patterns")
+    # Extract DataFrame correctly
+    hotel_stats_df = hotel_data["hotel_stats"]
 
     user_code = st.number_input(
         "User Code",
         min_value=0,
+        max_value=int(hotel_stats_df["userCode"].max()),
         step=1,
-        help="Enter a user code present in the dataset"
+        help="User ID from dataset"
     )
 
+    top_k = st.slider("Number of recommendations", 1, 10, 5)
+
     if st.button("Recommend Hotels"):
-        if user_code not in hotel_data:
-            st.warning("No recommendations found for this user.")
+        user_hotels = hotel_stats_df[
+            hotel_stats_df["userCode"] == user_code
+        ]
+
+        if user_hotels.empty:
+            st.warning("No booking history found for this user.")
         else:
-            recs = hotel_data[user_code]
+            recommendations = (
+                user_hotels
+                .sort_values(
+                    by=["bookings", "avg_total_cost"],
+                    ascending=[False, True]
+                )
+                .head(top_k)
+            )
 
-            # If recommendations are a DataFrame
-            if hasattr(recs, "head"):
-                st.table(recs.head(5))
-
-            # If recommendations are a list
-            elif isinstance(recs, list):
-                for i, hotel in enumerate(recs[:5], 1):
-                    st.write(f"{i}. {hotel}")
-
-            else:
-                st.write(recs)
+            st.success("Recommended Hotels")
+            st.dataframe(
+                recommendations[
+                    ["place", "name", "bookings", "avg_total_cost"]
+                ],
+                use_container_width=True
+            )
 
