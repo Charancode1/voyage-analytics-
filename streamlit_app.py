@@ -89,23 +89,36 @@ with tab2:
 # =====================================================
 # TAB 3: HOTEL RECOMMENDATION
 # =====================================================
-with tab3:
+# ====================================================
+# 🏨 HOTEL RECOMMENDATION
+# ====================================================
+with tabs[2]:
     st.header("🏨 Hotel Recommendation")
 
-    city = st.selectbox(
-        "Select Destination City",
-        sorted(hotel_data["place"].unique())
+    st.caption("Based on historical user booking patterns")
+
+    user_code = st.number_input(
+        "User Code",
+        min_value=0,
+        step=1,
+        help="Enter a user code present in the dataset"
     )
 
-    top_n = st.slider("Number of Hotels", 1, 10, 5)
+    if st.button("Recommend Hotels"):
+        if user_code not in hotel_data:
+            st.warning("No recommendations found for this user.")
+        else:
+            recs = hotel_data[user_code]
 
-    filtered = hotel_data[hotel_data["place"] == city] \
-        .sort_values(by=["total_bookings", "avg_cost"],
-                      ascending=[False, True]) \
-        .head(top_n)
+            # If recommendations are a DataFrame
+            if hasattr(recs, "head"):
+                st.table(recs.head(5))
 
-    st.subheader(f"Top {top_n} Hotels in {city}")
-    st.dataframe(
-        filtered[["name", "total_bookings", "avg_cost"]],
-        use_container_width=True
-    )
+            # If recommendations are a list
+            elif isinstance(recs, list):
+                for i, hotel in enumerate(recs[:5], 1):
+                    st.write(f"{i}. {hotel}")
+
+            else:
+                st.write(recs)
+
