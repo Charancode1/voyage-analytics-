@@ -12,6 +12,9 @@ hotel_data = joblib.load("hotel_recommender_data.pkl")
 
 hotel_stats_df = hotel_data["hotel_stats"]
 
+# Load users dataset for correct ranges
+users_df = pd.read_csv("dataset/users.csv")
+
 # =============================
 # App config
 # =============================
@@ -45,18 +48,12 @@ with tab1:
     with col1:
         time = st.slider(
             "Flight Time (hours)",
-            min_value=0.5,
-            max_value=6.0,
-            value=1.5,
-            step=0.1
+            0.5, 6.0, 1.5, 0.1
         )
 
         distance = st.slider(
             "Distance (km)",
-            min_value=100.0,
-            max_value=3000.0,
-            value=700.0,
-            step=50.0
+            100.0, 3000.0, 700.0, 50.0
         )
 
     with col2:
@@ -70,30 +67,25 @@ with tab1:
             ["FlyingDrops", "Rainbow"]
         )
 
-    # One-hot encoding (same as training)
-    flightType_firstClass = 1 if flight_type == "firstClass" else 0
-    flightType_premium = 1 if flight_type == "premium" else 0
-    agency_FlyingDrops = 1 if agency == "FlyingDrops" else 0
-    agency_Rainbow = 1 if agency == "Rainbow" else 0
+    flightType_firstClass = int(flight_type == "firstClass")
+    flightType_premium = int(flight_type == "premium")
+    agency_FlyingDrops = int(agency == "FlyingDrops")
+    agency_Rainbow = int(agency == "Rainbow")
 
     if st.button("Predict Flight Price"):
-        X = np.array([[
-            time,
-            distance,
-            flightType_firstClass,
-            flightType_premium,
-            agency_FlyingDrops,
-            agency_Rainbow
-        ]])
+        X = np.array([[time, distance,
+                       flightType_firstClass, flightType_premium,
+                       agency_FlyingDrops, agency_Rainbow]])
 
         price = flight_model.predict(X)[0]
         st.success(f"💰 Estimated Flight Price: ₹ {price:.2f}")
 
 # =====================================================
-# TAB 2: GENDER CLASSIFICATION
+# TAB 2: GENDER CLASSIFICATION (FIXED)
 # =====================================================
 with tab2:
     st.header("🧑 Gender Classification")
+    st.caption("Prediction based on historical user demographics")
 
     col1, col2 = st.columns(2)
 
@@ -101,41 +93,43 @@ with tab2:
         user_code = st.number_input(
             "User Code",
             min_value=0,
-            max_value=2000,
-            value=0
+            max_value=users_df["code"].max(),
+            value=0,
+            help="Valid user IDs: 0 to 1339"
         )
 
         age = st.slider(
             "Age",
-            min_value=18,
-            max_value=80,
+            min_value=int(users_df["age"].min()),
+            max_value=int(users_df["age"].max()),
             value=30
         )
 
     with col2:
-        company_encoded = st.slider(
-            "Company Code (encoded)",
-            min_value=0,
-            max_value=50,
-            value=0,
-            help="Encoded company ID used during training"
+        company = st.selectbox(
+            "Company",
+            users_df["company"].unique().tolist()
         )
+
+        # Map company → encoded value (same order as training)
+        company_encoder = {
+            name: idx for idx, name in
+            enumerate(users_df["company"].unique())
+        }
+
+        company_encoded = company_encoder[company]
 
         first_name_encoded = st.slider(
             "First Name Code (encoded)",
             min_value=0,
-            max_value=2000,
+            max_value=users_df["code"].max(),
             value=0,
-            help="Encoded first name ID used during training"
+            help="Internal name encoding used during training"
         )
 
     if st.button("Predict Gender"):
-        X = np.array([[
-            user_code,
-            age,
-            company_encoded,
-            first_name_encoded
-        ]])
+        X = np.array([[user_code, age,
+                       company_encoded, first_name_encoded]])
 
         pred = gender_model.predict(X)[0]
         gender_map = {0: "Female", 1: "Male", 2: "Other"}
@@ -147,7 +141,7 @@ with tab2:
 # =====================================================
 with tab3:
     st.header("🏨 Hotel Recommendation")
-    st.caption("Personalized hotel suggestions based on user booking history")
+    st.caption("Personalized suggestions from booking history")
 
     user_code = st.number_input(
         "User Code",
@@ -158,9 +152,7 @@ with tab3:
 
     top_k = st.slider(
         "Number of Recommendations",
-        min_value=1,
-        max_value=10,
-        value=5
+        1, 10, 5
     )
 
     if st.button("Recommend Hotels"):
@@ -203,5 +195,4 @@ with tab3:
                 ],
                 use_container_width=True
             )
-
 
