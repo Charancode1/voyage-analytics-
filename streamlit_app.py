@@ -35,7 +35,7 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # =====================================================
-# TAB 1: FLIGHT PRICE PREDICTION
+# TAB 1: FLIGHT PRICE PREDICTION (RANGES FIXED)
 # =====================================================
 with tab1:
     st.header("✈️ Flight Price Prediction")
@@ -45,18 +45,18 @@ with tab1:
     with col1:
         time = st.slider(
             "Flight Time (hours)",
-            min_value=0.5,
-            max_value=6.0,
-            value=1.5,
-            step=0.1
+            min_value=0.44,     # ✅ from data
+            max_value=2.44,     # ✅ from data
+            value=1.46,
+            step=0.01
         )
 
         distance = st.slider(
             "Distance (km)",
-            min_value=100.0,
-            max_value=3000.0,
-            value=700.0,
-            step=50.0
+            min_value=168.22,   # ✅ from data
+            max_value=937.77,   # ✅ from data
+            value=562.14,
+            step=1.0
         )
 
     with col2:
@@ -77,7 +77,7 @@ with tab1:
     agency_Rainbow = 1 if agency == "Rainbow" else 0
 
     if st.button("Predict Flight Price"):
-        X = np.array([[
+        X = np.array([[ 
             time,
             distance,
             flightType_firstClass,
@@ -90,18 +90,16 @@ with tab1:
         st.success(f"💰 Estimated Flight Price: ₹ {price:.2f}")
 
 # =====================================================
-# TAB 2: GENDER CLASSIFICATION (FIXED & EXPLAINABLE)
+# TAB 2: GENDER CLASSIFICATION (UNCHANGED)
 # =====================================================
 with tab2:
     st.header("🧑 Gender Classification")
     st.caption("Prediction based on demographic patterns learned from historical users")
 
-    # ---- Dataset-informed limits ----
     MAX_USERS = 1339
     MIN_AGE = 21
     MAX_AGE = 80
 
-    # ---- Company encoding used during training ----
     company_mapping = {
         "4You": 0,
         "Acme Factory": 1,
@@ -117,23 +115,20 @@ with tab2:
             "User Code",
             min_value=0,
             max_value=MAX_USERS,
-            value=0,
-            help="User ID seen during training (0–1339)"
+            value=0
         )
 
         age = st.slider(
             "Age",
             min_value=MIN_AGE,
             max_value=MAX_AGE,
-            value=30,
-            help="Observed age range in training data"
+            value=30
         )
 
     with col2:
         company = st.selectbox(
             "Company",
-            list(company_mapping.keys()),
-            help="Company the user belongs to"
+            list(company_mapping.keys())
         )
 
         company_encoded = company_mapping[company]
@@ -142,15 +137,11 @@ with tab2:
             "First Name Code (encoded)",
             min_value=0,
             max_value=MAX_USERS,
-            value=0,
-            help=(
-                "Numeric encoding of the user's first name "
-                "(generated using LabelEncoder during training)"
-            )
+            value=0
         )
 
     if st.button("Predict Gender"):
-        X = np.array([[
+        X = np.array([[ 
             user_code,
             age,
             company_encoded,
@@ -159,16 +150,11 @@ with tab2:
 
         pred = gender_model.predict(X)[0]
 
-        gender_map = {
-            0: "Female",
-            1: "Male",
-            2: "Other"
-        }
-
+        gender_map = {0: "Female", 1: "Male", 2: "Other"}
         st.success(f"🧾 Predicted Gender: **{gender_map[pred]}**")
 
 # =====================================================
-# TAB 3: HOTEL RECOMMENDATION
+# TAB 3: HOTEL RECOMMENDATION (RANGE CONFIRMED)
 # =====================================================
 with tab3:
     st.header("🏨 Hotel Recommendation")
@@ -177,7 +163,7 @@ with tab3:
     user_code = st.number_input(
         "User Code",
         min_value=0,
-        max_value=int(hotel_stats_df["userCode"].max()),
+        max_value=1339,  # ✅ confirmed from data
         step=1
     )
 
@@ -194,9 +180,7 @@ with tab3:
         ]
 
         if user_hotels.empty:
-            st.warning(
-                "No history found. Showing popular hotels instead."
-            )
+            st.warning("No history found. Showing popular hotels instead.")
 
             popular = (
                 hotel_stats_df
